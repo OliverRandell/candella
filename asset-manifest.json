@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/candella/static/css/main.f855e6bc.css",
-    "main.js": "/candella/static/js/main.96c01ea2.js",
+    "main.js": "/candella/static/js/main.e1ae3675.js",
     "static/js/787.2839d8c3.chunk.js": "/candella/static/js/787.2839d8c3.chunk.js",
     "static/media/logo.svg": "/candella/static/media/logo.6ce24c58023cc2f8fd88fe9d219db6c6.svg",
     "index.html": "/candella/index.html",
     "main.f855e6bc.css.map": "/candella/static/css/main.f855e6bc.css.map",
-    "main.96c01ea2.js.map": "/candella/static/js/main.96c01ea2.js.map",
+    "main.e1ae3675.js.map": "/candella/static/js/main.e1ae3675.js.map",
     "787.2839d8c3.chunk.js.map": "/candella/static/js/787.2839d8c3.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.f855e6bc.css",
-    "static/js/main.96c01ea2.js"
+    "static/js/main.e1ae3675.js"
   ]
 }
