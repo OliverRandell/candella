@@ -1,22 +1,95 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { Business } from '@/lib/types'
 
-export const metadata = {
-  title: 'Sustainable businesses in Melbourne — Candella',
-  description: 'Browse Melbourne\'s most trusted directory of sustainable, ethical and planet-friendly businesses.',
-}
+const CATEGORIES = [
+  'All',
+  'Cafes & Restaurants',
+  'Fashion',
+  'Groceries',
+  'Home & Living',
+  'Alcohol',
+  'Markets',
+]
 
-export default async function BusinessesPage() {
-  const supabase = await createClient()
+export default function BusinessesPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const { data: businesses, error } = await supabase
-    .from('businesses')
-    .select('*')
-    .order('is_featured', { ascending: false })
-    .order('name')
+  const [businesses, setBusinesses] = useState<Business[]>([])
+  const [filtered, setFiltered] = useState<Business[]>([])
+  const [loading, setLoading] = useState(true)
+  const [suburbs, setSuburbs] = useState<string[]>([])
 
-  if (error) console.error(error)
+  const activeCategory = searchParams.get('category') ?? 'All'
+  const activeSuburb = searchParams.get('suburb') ?? 'All'
+  const searchQuery = searchParams.get('q') ?? ''
+
+  // Fetch all businesses once
+  useEffect(() => {
+    async function fetch() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('businesses')
+        .select('*')
+        .order('is_featured', { ascending: false })
+        .order('name')
+
+      if (data) {
+        setBusinesses(data)
+        const uniqueSuburbs = Array.from(
+          new Set(data.map((b: Business) => b.suburb).filter(Boolean))
+        ).sort() as string[]
+        setSuburbs(uniqueSuburbs)
+      }
+      setLoading(false)
+    }
+    fetch()
+  }, [])
+
+  // Filter client-side whenever params change
+  const applyFilters = useCallback(() => {
+    let results = [...businesses]
+
+    if (activeCategory !== 'All') {
+      results = results.filter(b => b.category === activeCategory)
+    }
+
+    if (activeSuburb !== 'All') {
+      results = results.filter(b => b.suburb === activeSuburb)
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      results = results.filter(b =>
+        b.name.toLowerCase().includes(q) ||
+        b.description?.toLowerCase().includes(q) ||
+        b.suburb?.toLowerCase().includes(q)
+      )
+    }
+
+    setFiltered(results)
+  }, [businesses, activeCategory, activeSuburb, searchQuery])
+
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
+
+  function updateParams(updates: Record<string, string>) {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== 'All') {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    })
+    router.push(`/businesses?${params.toString()}`, { scroll: false })
+  }
 
   return (
     <main className="min-h-screen bg-white">
@@ -29,23 +102,94 @@ export default async function BusinessesPage() {
         <span className="text-sm text-stone-400">Melbourne</span>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-10">
 
-        <h1 className="text-2xl font-semibold text-stone-900 mb-2">
-          Sustainable businesses
-        </h1>
-        <p className="text-stone-500 text-sm mb-10">
-          {businesses?.length ?? 0} listings across Melbourne
-        </p>
+        {/* Heading */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-stone-900 mb-1">
+            Sustainable businesses
+          </h1>
+          <p className="text-stone-400 text-sm">
+            {loading ? 'Loading...' : `${filtered.length} listing${filtered.length !== 1 ? 's' : ''} found`}
+          </p>
+        </div>
+
+        {/* Search */}
+        <div className="mb-5">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => updateParams({ q: e.target.value })}
+            placeholder="Search businesses..."
+            className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 placeholder:text-stone-300 focus:outline-none focus:border-emerald-400 transition-colors"
+          />
+        </div>
+
+        {/* Category chips */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => updateParams({ category: cat })}
+              className={`px-4 py-1.5 rounded-full text-sm transition-colors border ${
+                activeCategory === cat
+                  ? 'bg-stone-900 text-white border-stone-900'
+                  : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Suburb filter */}
+        <div className="mb-8">
+          <select
+            value={activeSuburb}
+            onChange={e => updateParams({ suburb: e.target.value })}
+            className="border border-stone-200 rounded-xl px-4 py-2 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
+          >
+            <option value="All">All suburbs</option>
+            {suburbs.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          {/* Active filter summary */}
+          {(activeCategory !== 'All' || activeSuburb !== 'All' || searchQuery) && (
+            <button
+              onClick={() => router.push('/businesses', { scroll: false })}
+              className="ml-3 text-xs text-stone-400 hover:text-stone-700 underline transition-colors"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
 
         {/* Listings */}
-        {!businesses || businesses.length === 0 ? (
-          <div className="text-center py-20 text-stone-400 text-sm">
-            No listings yet — check back soon.
+        {loading ? (
+          <div className="divide-y divide-stone-100">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="py-5">
+                <div className="h-4 bg-stone-100 rounded w-1/3 mb-2 animate-pulse" />
+                <div className="h-3 bg-stone-100 rounded w-1/4 mb-3 animate-pulse" />
+                <div className="h-3 bg-stone-100 rounded w-2/3 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-stone-400 text-sm mb-3">No businesses match your search.</p>
+            <button
+              onClick={() => router.push('/businesses', { scroll: false })}
+              className="text-sm text-emerald-600 hover:underline"
+            >
+              Clear filters
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-stone-100">
-            {businesses.map((business: Business) => (
+            {filtered.map((business: Business) => (
               <BusinessCard key={business.id} business={business} />
             ))}
           </div>
@@ -57,10 +201,7 @@ export default async function BusinessesPage() {
 
 function BusinessCard({ business }: { business: Business }) {
   return (
-    <Link
-      href={`/businesses/${business.slug}`}
-      className="block py-5 group"
-    >
+    <Link href={`/businesses/${business.slug}`} className="block py-5 group">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -88,20 +229,15 @@ function BusinessCard({ business }: { business: Business }) {
           )}
           {business.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-3">
-              {business.tags.slice(0, 4).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full"
-                >
+              {business.tags.slice(0, 4).map(tag => (
+                <span key={tag} className="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">
                   {tag}
                 </span>
               ))}
             </div>
           )}
         </div>
-        <span className="text-stone-300 group-hover:text-emerald-500 transition-colors text-lg flex-shrink-0">
-          →
-        </span>
+        <span className="text-stone-300 group-hover:text-emerald-500 transition-colors flex-shrink-0">→</span>
       </div>
     </Link>
   )
