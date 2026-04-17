@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
                 backgroundColor: color,
                 borderRadius: '3px',
                 marginBottom: '40px',
+                display: 'flex',
               }}
             />
             {category ? (
@@ -45,7 +46,6 @@ export async function GET(request: NextRequest) {
                   padding: '8px 20px',
                   borderRadius: '100px',
                   marginBottom: '32px',
-                  width: 'fit-content',
                 }}
               >
                 {category}
@@ -53,10 +53,11 @@ export async function GET(request: NextRequest) {
             ) : null}
             <div
               style={{
-                fontSize: name.length > 20 ? '60px' : '76px',
+                display: 'flex',
+                fontSize: name.length > 20 ? 60 : 76,
                 fontWeight: '700',
                 color: '#1c1917',
-                lineHeight: '1.1',
+                lineHeight: 1.1,
               }}
             >
               {name}
@@ -69,12 +70,13 @@ export async function GET(request: NextRequest) {
               alignItems: 'center',
             }}
           >
-            <div style={{ fontSize: '24px', color: '#888780' }}>
+            <div style={{ display: 'flex', fontSize: 24, color: '#888780' }}>
               {suburb} · Melbourne
             </div>
             <div
               style={{
-                fontSize: '28px',
+                display: 'flex',
+                fontSize: 28,
                 fontWeight: '600',
                 color: '#1c1917',
               }}
