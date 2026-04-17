@@ -8,6 +8,7 @@ export type Business = {
   category: string
   description: string | null
   tags: string[]
+  criteria: string[]
   website_url: string | null
   instagram_url: string | null
   address: string | null
@@ -34,4 +35,11 @@ export type Category = {
   id: string
   name: string
   slug: string
+}
+
+export type Criteria = {
+  id: string
+  name: string
+  slug: string
+  description: string
 }
