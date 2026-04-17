@@ -23,6 +23,18 @@ export async function generateMetadata({ params }: Props) {
     `${business.name} is a sustainable ${business.category.toLowerCase()} business in ${business.suburb}, Melbourne.`
   const url = `${process.env.NEXT_PUBLIC_SITE_URL}/businesses/${slug}`
 
+  const categoryColors: Record<string, string> = {
+    'Cafes & Restaurants': '#A1EDCA',
+    'Fashion': '#EDB1A1',
+    'Groceries': '#EDA1B7',
+    'Home & Living': '#D1A1ED',
+    'Alcohol': '#A1D0ED',
+    'Markets': '#DDEDA1',
+  }
+  const color = categoryColors[business.category] ?? '#A1EDCA'
+
+  const ogImageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/og?name=${encodeURIComponent(business.name)}&suburb=${encodeURIComponent(business.suburb)}&category=${encodeURIComponent(business.category)}&color=${encodeURIComponent(color)}`
+
   return {
     title,
     description,
@@ -33,11 +45,20 @@ export async function generateMetadata({ params }: Props) {
       siteName: 'Candella',
       locale: 'en_AU',
       type: 'website',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: [ogImageUrl],
     },
   }
 }
