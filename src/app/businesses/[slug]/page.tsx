@@ -12,15 +12,33 @@ export async function generateMetadata({ params }: Props) {
   const supabase = await createClient()
   const { data: business } = await supabase
     .from('businesses')
-    .select('name, description, suburb')
+    .select('name, description, suburb, category')
     .eq('slug', slug)
     .single()
 
   if (!business) return {}
 
+  const title = `${business.name} — Candella`
+  const description = business.description?.slice(0, 155) ??
+    `${business.name} is a sustainable ${business.category.toLowerCase()} business in ${business.suburb}, Melbourne.`
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL}/businesses/${slug}`
+
   return {
-    title: `${business.name} — Candella`,
-    description: business.description?.slice(0, 155) ?? `${business.name} is a sustainable business in ${business.suburb}, Melbourne.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'Candella',
+      locale: 'en_AU',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   }
 }
 

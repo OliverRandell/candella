@@ -13,12 +13,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Candella — Sustainable businesses in Melbourne",
-  description: "Discover sustainable, ethical and planet-friendly businesses across Melbourne.",
+  title: 'Candella — Sustainable businesses in Melbourne',
+  description: 'Discover sustainable, ethical and planet-friendly businesses across Melbourne.',
   verification: {
     google: '6aQpV6f4a07WVYO02zZhh1WI2tTTmTtaxLqrtpLlb8g',
-  }
-};
+  },
+  openGraph: {
+    title: 'Candella — Sustainable businesses in Melbourne',
+    description: 'Discover sustainable, ethical and planet-friendly businesses across Melbourne.',
+    url: process.env.NEXT_PUBLIC_SITE_URL,
+    siteName: 'Candella',
+    locale: 'en_AU',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Candella — Sustainable businesses in Melbourne',
+    description: 'Discover sustainable, ethical and planet-friendly businesses across Melbourne.',
+  },
+}
 
 export default function RootLayout({
   children,
