@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -50,14 +50,7 @@ const CRITERIA_OPTIONS = [
   'Size Inclusive',
 ]
 
-const DEFAULT_RADIUS = 5
-
 type ViewMode = 'map' | 'list'
-
-type LocationFilter =
-  | { mode: 'none' }
-  | { mode: 'suburb'; suburb: string }
-  | { mode: 'nearMe'; lat: number; lng: number; radius: number }
 
 function getDistanceKm(
   lat1: number, lng1: number,
@@ -74,58 +67,31 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-/**
- * Parse URL into a LocationFilter. Suburb wins over Near Me if both present
- * (deterministic tiebreak). This guarantees mutual exclusion at read time,
- * even if the URL somehow ends up with stale params from both modes.
- */
-function parseLocationFilter(params: URLSearchParams): LocationFilter {
-  const suburb = params.get('suburb')
-  if (suburb && suburb !== 'All') {
-    return { mode: 'suburb', suburb }
-  }
-  const lat = params.get('lat')
-  const lng = params.get('lng')
-  if (lat && lng) {
-    const latNum = Number(lat)
-    const lngNum = Number(lng)
-    if (!Number.isNaN(latNum) && !Number.isNaN(lngNum)) {
-      const radius = Number(params.get('radius')) || DEFAULT_RADIUS
-      return { mode: 'nearMe', lat: latNum, lng: lngNum, radius }
-    }
-  }
-  return { mode: 'none' }
-}
-
 export default function BusinessesPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [businesses, setBusinesses] = useState<Business[]>([])
+  const [filtered, setFiltered] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [suburbs, setSuburbs] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<ViewMode>('map')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const activeCategory = searchParams.get('category') ?? 'All'
+  const activeSuburb = searchParams.get('suburb') ?? 'All'
   const searchQuery = searchParams.get('q') ?? ''
+  const activeRadius = Number(searchParams.get('radius') ?? '0')
   const activeCriteriaString = searchParams.get('criteria') ?? ''
-  const activeCriteria = useMemo(
-    () => activeCriteriaString ? activeCriteriaString.split(',').filter(Boolean) : [],
-    [activeCriteriaString]
-  )
-  const locationFilter = useMemo(
-    () => parseLocationFilter(searchParams),
-    [searchParams]
-  )
-
+  const activeCriteria = activeCriteriaString ? activeCriteriaString.split(',').filter(Boolean) : []
 
   useEffect(() => {
-    async function fetchBusinesses() {
+    async function fetch() {
       const supabase = createClient()
       const { data } = await supabase
         .from('businesses')
@@ -142,14 +108,18 @@ export default function BusinessesPage() {
       }
       setLoading(false)
     }
-    fetchBusinesses()
+    fetch()
   }, [])
 
-  const filtered = useMemo(() => {
-    let results = businesses
+  const applyFilters = useCallback(() => {
+    let results = [...businesses]
 
     if (activeCategory !== 'All') {
       results = results.filter(b => b.category === activeCategory)
+    }
+
+    if (activeSuburb !== 'All') {
+      results = results.filter(b => b.suburb === activeSuburb)
     }
 
     if (searchQuery.trim()) {
@@ -161,13 +131,13 @@ export default function BusinessesPage() {
       )
     }
 
-    if (locationFilter.mode === 'suburb') {
-      results = results.filter(b => b.suburb === locationFilter.suburb)
-    } else if (locationFilter.mode === 'nearMe') {
-      const { lat, lng, radius } = locationFilter
+    if (userLocation && activeRadius > 0) {
       results = results.filter(b => {
         if (!b.lat || !b.lng) return false
-        return getDistanceKm(lat, lng, Number(b.lat), Number(b.lng)) <= radius
+        return getDistanceKm(
+          userLocation.lat, userLocation.lng,
+          Number(b.lat), Number(b.lng)
+        ) <= activeRadius
       })
     }
 
@@ -177,115 +147,63 @@ export default function BusinessesPage() {
       )
     }
 
-    return results
-  }, [businesses, activeCategory, searchQuery, locationFilter, activeCriteria])
+    setFiltered(results)
+  }, [businesses, activeCategory, activeSuburb, searchQuery, userLocation, activeRadius, activeCriteriaString])
 
-  /**
-   * Navigate to a new URL. Instead of merging with the current searchParams
-   * (which can be stale inside callbacks), we read the LIVE URL from
-   * window.location at call time. This avoids the stale-closure trap where
-   * `searchParams` captured when `updateParams` was memoised doesn't reflect
-   * a very recent navigation.
-   */
-  const navigate = useCallback((updates: Record<string, string | null>) => {
-    // Read live URL, not the stale searchParams closure
-    const current = typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search)
-      : new URLSearchParams(searchParams.toString())
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
 
+  function updateParams(updates: Record<string, string>) {
+    const params = new URLSearchParams(searchParams.toString())
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === null || value === '') {
-        current.delete(key)
+      if (value && value !== 'All' && value !== '0') {
+        params.set(key, value)
       } else {
-        current.set(key, value)
+        params.delete(key)
       }
     })
+    router.push(`/businesses?${params.toString()}`, { scroll: false })
+  }
 
-    const query = current.toString()
-    router.push(query ? `/businesses?${query}` : '/businesses', { scroll: false })
-  }, [router, searchParams])
+  function toggleCriteria(criterion: string) {
+    const current = activeCriteria
+    const updated = current.includes(criterion)
+      ? current.filter(c => c !== criterion)
+      : [...current, criterion]
+    updateParams({ criteria: updated.join(',') })
+  }
 
-  /**
-   * Location-mode switchers. Each one sets its own keys and explicitly
-   * deletes the other mode's keys — mutual exclusion at write time.
-   */
-  const selectSuburb = useCallback((suburb: string) => {
-    navigate({
-      suburb: suburb === 'All' ? null : suburb,
-      lat: null,
-      lng: null,
-      radius: null,
-    })
-  }, [navigate])
-
-  const enableNearMe = useCallback(() => {
+  function requestLocation() {
     setLocationLoading(true)
     navigator.geolocation.getCurrentPosition(
       pos => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         setLocationLoading(false)
-        navigate({
-          lat: String(pos.coords.latitude),
-          lng: String(pos.coords.longitude),
-          radius: String(DEFAULT_RADIUS),
-          suburb: null,
-        })
+        updateParams({ radius: '5' })
       },
       () => {
         setLocationLoading(false)
         alert('Unable to get your location. Please check your browser settings.')
       }
     )
-  }, [navigate])
-
-  const disableNearMe = useCallback(() => {
-    navigate({ lat: null, lng: null, radius: null })
-  }, [navigate])
-
-  const updateRadius = useCallback((radius: number) => {
-    navigate({ radius: String(radius) })
-  }, [navigate])
-
-  const setCategory = useCallback((category: string) => {
-    navigate({ category: category === 'All' ? null : category })
-  }, [navigate])
-
-  const setSearchQuery = useCallback((q: string) => {
-    navigate({ q: q || null })
-  }, [navigate])
-
-  const toggleCriteria = useCallback((criterion: string) => {
-    const updated = activeCriteria.includes(criterion)
-      ? activeCriteria.filter(c => c !== criterion)
-      : [...activeCriteria, criterion]
-    navigate({ criteria: updated.length ? updated.join(',') : null })
-  }, [activeCriteria, navigate])
-
-  const clearAllFilters = useCallback(() => {
-    router.push('/businesses', { scroll: false })
-  }, [router])
+  }
 
   function handleMarkerClick(business: Business) {
     setSelectedId(business.id)
     cardRefs.current[business.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  const hasActiveFilters =
-    activeCategory !== 'All' ||
-    locationFilter.mode !== 'none' ||
-    searchQuery !== '' ||
+  const hasActiveFilters = activeCategory !== 'All' ||
+    activeSuburb !== 'All' ||
+    searchQuery ||
+    activeRadius > 0 ||
     activeCriteria.length > 0
-
-  const mapUserLocation = locationFilter.mode === 'nearMe'
-    ? { lat: locationFilter.lat, lng: locationFilter.lng }
-    : null
-  const mapRadius = locationFilter.mode === 'nearMe' ? locationFilter.radius : 0
-  const mapSuburb = locationFilter.mode === 'suburb' ? locationFilter.suburb : null
-
-  const suburbSelectValue = locationFilter.mode === 'suburb' ? locationFilter.suburb : 'All'
 
   return (
     <main className="h-screen flex flex-col bg-white overflow-hidden">
 
+      {/* Nav */}
       <nav className="border-b border-stone-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
         <Link href="/" className="text-lg font-semibold tracking-tight text-stone-900">
           candella
@@ -293,22 +211,25 @@ export default function BusinessesPage() {
         <span className="text-sm text-stone-400">Melbourne</span>
       </nav>
 
+      {/* Filter bar */}
       <div className="border-b border-stone-100 px-6 py-4 flex-shrink-0">
         <div className="flex flex-wrap gap-3 items-center">
 
+          {/* Search */}
           <div className="relative flex-1 min-w-[180px]">
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => updateParams({ q: e.target.value })}
               placeholder="Search businesses..."
               className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-300 focus:outline-none focus:border-emerald-400 transition-colors"
             />
           </div>
 
+          {/* Category */}
           <select
             value={activeCategory}
-            onChange={e => setCategory(e.target.value)}
+            onChange={e => updateParams({ category: e.target.value })}
             className="border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
           >
             {CATEGORIES.map(cat => (
@@ -316,10 +237,10 @@ export default function BusinessesPage() {
             ))}
           </select>
 
-          {/* Suburb dropdown — selecting any option clears Near Me */}
+          {/* Suburb */}
           <select
-            value={suburbSelectValue}
-            onChange={e => selectSuburb(e.target.value)}
+            value={activeSuburb}
+            onChange={e => updateParams({ suburb: e.target.value })}
             className="border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
           >
             <option value="All">All suburbs</option>
@@ -328,28 +249,25 @@ export default function BusinessesPage() {
             ))}
           </select>
 
-          {/* Near Me — toggles on/off. Enabling clears suburb. */}
+          {/* Location + radius */}
           <div className="flex items-center gap-2">
             <button
-              onClick={locationFilter.mode === 'nearMe' ? disableNearMe : enableNearMe}
+              onClick={requestLocation}
               disabled={locationLoading}
-              aria-pressed={locationFilter.mode === 'nearMe'}
               className={`flex items-center gap-1.5 border rounded-xl px-4 py-2.5 text-sm transition-colors ${
-                locationFilter.mode === 'nearMe'
+                userLocation
                   ? 'border-emerald-400 text-emerald-700 bg-emerald-50'
                   : 'border-stone-200 text-stone-600 hover:border-stone-400'
               }`}
             >
               <span style={{ fontSize: '14px' }}>◎</span>
-              {locationLoading
-                ? 'Locating...'
-                : locationFilter.mode === 'nearMe' ? 'Near me · on' : 'Near me'}
+              {locationLoading ? 'Locating...' : userLocation ? 'Located' : 'Near me'}
             </button>
 
-            {locationFilter.mode === 'nearMe' && (
+            {userLocation && (
               <select
-                value={locationFilter.radius}
-                onChange={e => updateRadius(Number(e.target.value))}
+                value={activeRadius || 5}
+                onChange={e => updateParams({ radius: e.target.value })}
                 className="border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
               >
                 {RADIUS_OPTIONS.map(r => (
@@ -359,6 +277,7 @@ export default function BusinessesPage() {
             )}
           </div>
 
+          {/* Filters button */}
           <button
             onClick={() => setFiltersOpen(true)}
             className={`flex items-center gap-1.5 border rounded-xl px-4 py-2.5 text-sm transition-colors ${
@@ -376,9 +295,10 @@ export default function BusinessesPage() {
             )}
           </button>
 
+          {/* Clear */}
           {hasActiveFilters && (
             <button
-              onClick={clearAllFilters}
+              onClick={() => router.push('/businesses', { scroll: false })}
               className="text-xs text-stone-400 hover:text-stone-700 underline transition-colors"
             >
               Clear all
@@ -386,6 +306,7 @@ export default function BusinessesPage() {
           )}
         </div>
 
+        {/* Results count + view toggle */}
         <div className="flex items-center justify-between mt-3">
           <p className="text-stone-400 text-sm">
             {loading ? 'Loading...' : `${filtered.length} listing${filtered.length !== 1 ? 's' : ''} found`}
@@ -415,11 +336,14 @@ export default function BusinessesPage() {
         </div>
       </div>
 
+      {/* Content area */}
       <div className="flex-1 overflow-hidden flex">
 
+        {/* Desktop */}
         <div className="hidden lg:flex w-full h-full">
           {viewMode === 'map' ? (
             <>
+              {/* Sidebar list */}
               <div className="w-[420px] flex-shrink-0 overflow-y-auto border-r border-stone-100 px-6 py-4">
                 {loading ? (
                   <div className="space-y-4">
@@ -435,7 +359,7 @@ export default function BusinessesPage() {
                   <div className="text-center py-20">
                     <p className="text-stone-400 text-sm mb-3">No businesses match your filters.</p>
                     <button
-                      onClick={clearAllFilters}
+                      onClick={() => router.push('/businesses', { scroll: false })}
                       className="text-sm text-emerald-600 hover:underline"
                     >
                       Clear filters
@@ -459,6 +383,7 @@ export default function BusinessesPage() {
                 )}
               </div>
 
+              {/* Map */}
               <div className="flex-1">
                 <BusinessMap
                   businesses={filtered}
@@ -466,13 +391,14 @@ export default function BusinessesPage() {
                   hoveredId={hoveredId}
                   onMarkerClick={handleMarkerClick}
                   onMarkerHover={(id) => setHoveredId(id)}
-                  userLocation={mapUserLocation}
-                  activeRadius={mapRadius}
-                  activeSuburb={mapSuburb}
+                  userLocation={userLocation}
+                  activeRadius={activeRadius}
+                  activeSuburb={activeSuburb !== 'All' ? activeSuburb : null}
                 />
               </div>
             </>
           ) : (
+            /* List only */
             <div className="w-full overflow-y-auto px-6 py-4 max-w-3xl mx-auto">
               {loading ? (
                 <div className="space-y-4">
@@ -501,6 +427,7 @@ export default function BusinessesPage() {
           )}
         </div>
 
+        {/* Mobile: toggle view */}
         <div className="lg:hidden w-full h-full">
           {viewMode === 'list' ? (
             <div className="overflow-y-auto h-full px-6 py-4">
@@ -536,15 +463,16 @@ export default function BusinessesPage() {
                 hoveredId={hoveredId}
                 onMarkerClick={handleMarkerClick}
                 onMarkerHover={(id) => setHoveredId(id)}
-                userLocation={mapUserLocation}
-                activeRadius={mapRadius}
-                activeSuburb={mapSuburb}
+                userLocation={userLocation}
+                activeRadius={activeRadius}
+                activeSuburb={activeSuburb !== 'All' ? activeSuburb : null}
               />
             </div>
           )}
         </div>
       </div>
 
+      {/* Filters drawer */}
       {filtersOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div
@@ -591,7 +519,7 @@ export default function BusinessesPage() {
 
               {activeCriteria.length > 0 && (
                 <button
-                  onClick={() => navigate({ criteria: null })}
+                  onClick={() => updateParams({ criteria: '' })}
                   className="mt-6 text-xs text-stone-400 hover:text-stone-700 underline"
                 >
                   Clear criteria filters

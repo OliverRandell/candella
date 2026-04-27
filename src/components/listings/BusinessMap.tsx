@@ -17,12 +17,28 @@ type Props = {
   hoveredId?: string | null
   onMarkerClick?: (business: Business) => void
   onMarkerHover?: (id: string | null) => void
+  // Invariant enforced by the parent: `userLocation` and `activeSuburb`
+  // are NEVER both truthy at the same time. The parent passes one or the other.
   userLocation?: { lat: number; lng: number } | null
   activeRadius?: number
   activeSuburb?: string | null
 }
 
 const MELBOURNE_CENTER = { lat: -37.8136, lng: 144.9631 }
+const MELBOURNE_DEFAULT_ZOOM = 13
+
+/**
+ * Zoom level chosen so the full radius circle is comfortably visible on a
+ * desktop viewport. Previously the values were one level too tight, which
+ * clipped the circle on wider radii.
+ */
+function zoomForRadius(radiusKm: number): number {
+  if (radiusKm <= 2) return 14
+  if (radiusKm <= 5) return 13
+  if (radiusKm <= 10) return 12
+  if (radiusKm <= 20) return 11
+  return 10
+}
 
 function MapController({
   activeSuburb,
@@ -40,6 +56,17 @@ function MapController({
   const map = useMap()
   const circleRef = useRef<google.maps.Circle | null>(null)
 
+  // Reset map to Melbourne when all location filters clear.
+  // This catches the case where the user clicks "Clear all" or disables Near Me.
+  useEffect(() => {
+    if (!map) return
+    if (!activeSuburb && !userLocation) {
+      map.panTo(MELBOURNE_CENTER)
+      map.setZoom(MELBOURNE_DEFAULT_ZOOM)
+    }
+  }, [map, activeSuburb, userLocation])
+
+  // Pan/zoom to suburb
   useEffect(() => {
     if (!map || !activeSuburb || !suburbCenter) return
     if (suburbBounds) {
@@ -54,6 +81,8 @@ function MapController({
     }
   }, [map, activeSuburb, suburbCenter, suburbBounds])
 
+  // Draw the radius circle and pan to user. Bumped fill opacity 0.12 → 0.22
+  // and stroke to 2.5 px so the area is actually visible on the map.
   useEffect(() => {
     if (circleRef.current) {
       circleRef.current.setMap(null)
@@ -66,15 +95,16 @@ function MapController({
       map,
       center: userLocation,
       radius: activeRadius * 1000,
-      strokeColor: '#A1EDCA',
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
+      strokeColor: '#0F6E56',
+      strokeOpacity: 0.9,
+      strokeWeight: 2.5,
       fillColor: '#A1EDCA',
-      fillOpacity: 0.12,
+      fillOpacity: 0.22,
+      clickable: false,
     })
 
     map.panTo(userLocation)
-    map.setZoom(activeRadius <= 2 ? 15 : activeRadius <= 5 ? 14 : activeRadius <= 10 ? 13 : 12)
+    map.setZoom(zoomForRadius(activeRadius))
 
     return () => {
       circleRef.current?.setMap(null)
@@ -107,7 +137,8 @@ export default function BusinessMap({
 
   const handleMarkerClick = useCallback((business: Business) => {
     setSelectedBusiness(prev => prev?.id === business.id ? null : business)
-  }, [])
+    onMarkerClick?.(business)
+  }, [onMarkerClick])
 
   const mapped = businesses.filter(b => b.lat && b.lng)
 
@@ -138,7 +169,7 @@ export default function BusinessMap({
       <Map
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
         defaultCenter={MELBOURNE_CENTER}
-        defaultZoom={13}
+        defaultZoom={MELBOURNE_DEFAULT_ZOOM}
         gestureHandling="greedy"
         style={{ width: '100%', height: '100%' }}
       >
@@ -214,8 +245,8 @@ export default function BusinessMap({
                   {selectedBusiness.description.slice(0, 100)}...
                 </p>
               )}
-              
-                <a href={`/businesses/${selectedBusiness.slug}`}
+              <a
+                href={`/businesses/${selectedBusiness.slug}`}
                 style={{ fontSize: '12px', color: '#0F6E56', textDecoration: 'none', fontWeight: 500 }}
               >
                 View listing →
