@@ -1,20 +1,40 @@
 import Link from 'next/link'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase/server'
+import { CATEGORIES, CATEGORY_NAMES } from '@/lib/categories'
 
-const CATEGORIES = [
-  { label: 'Cafes & coffee', slug: 'cafes-coffee' },
-  { label: 'Grocers & food', slug: 'grocers-food' },
-  { label: 'Fashion & clothing', slug: 'fashion-clothing' },
-  { label: 'Homewares & living', slug: 'homewares-living' },
-  { label: 'Health & wellness', slug: 'health-wellness' },
-  { label: 'Beauty & personal care', slug: 'beauty-personal-care' },
-]
+/**
+ * Top suburbs by listing count. Fetched server-side so the homepage stays
+ * static-friendly. Falls back to an empty list on error — the section will
+ * just not render its tiles, rather than crashing.
+ */
+async function getTopSuburbs(limit = 8): Promise<{ name: string; count: number }[]> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('suburb')
 
-const SUBURBS = [
-  'Fitzroy', 'Collingwood', 'Brunswick', 'Northcote',
-  'Richmond', 'South Yarra', 'Prahran', 'St Kilda',
-]
+    if (error || !data) return []
 
-export default function HomePage() {
+    const counts = new Map<string, number>()
+    for (const row of data) {
+      if (!row.suburb) continue
+      counts.set(row.suburb, (counts.get(row.suburb) ?? 0) + 1)
+    }
+
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+  } catch {
+    return []
+  }
+}
+
+export default async function HomePage() {
+  const topSuburbs = await getTopSuburbs(8)
+
   return (
     <main className="min-h-screen bg-white">
 
@@ -49,41 +69,54 @@ export default function HomePage() {
         </Link>
       </section>
 
-      {/* Categories */}
+      {/* Categories — links into the browse page with the filter pre-applied */}
       <section className="px-6 py-12 max-w-3xl mx-auto">
         <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-6">
           Browse by category
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/category/${cat.slug}`}
-              className="border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-700 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
-            >
-              {cat.label}
-            </Link>
-          ))}
+          {CATEGORY_NAMES.map((name) => {
+            const cat = CATEGORIES[name]
+            return (
+              <Link
+                key={name}
+                href={`/businesses?category=${encodeURIComponent(name)}`}
+                className="group flex items-center gap-3 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-700 hover:border-stone-400 hover:bg-stone-50 transition-colors"
+              >
+                <Image
+                  src={cat.iconPath}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="flex-shrink-0"
+                />
+                <span className="truncate">{name}</span>
+              </Link>
+            )
+          })}
         </div>
       </section>
 
-      {/* Suburbs */}
-      <section className="px-6 py-12 max-w-3xl mx-auto">
-        <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-6">
-          Browse by suburb
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {SUBURBS.map((suburb) => (
-            <Link
-              key={suburb}
-              href={`/suburb/${suburb.toLowerCase()}`}
-              className="border border-stone-200 rounded-full px-4 py-2 text-sm text-stone-600 hover:border-emerald-400 hover:text-emerald-700 transition-colors"
-            >
-              {suburb}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Suburbs — top by listing count, pulled from the database */}
+      {topSuburbs.length > 0 && (
+        <section className="px-6 py-12 max-w-3xl mx-auto">
+          <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-6">
+            Most listed suburbs
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {topSuburbs.map(({ name, count }) => (
+              <Link
+                key={name}
+                href={`/businesses?suburb=${encodeURIComponent(name)}`}
+                className="border border-stone-200 rounded-full px-4 py-2 text-sm text-stone-600 hover:border-stone-400 hover:bg-stone-50 transition-colors"
+              >
+                <span>{name}</span>
+                <span className="text-stone-400 ml-1.5">{count}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Footer CTA */}
       <section className="px-6 py-16 max-w-2xl mx-auto text-center border-t border-stone-100 mt-8">

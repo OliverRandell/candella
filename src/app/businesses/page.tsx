@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Business } from '@/lib/types'
-import { getCategoryColor } from '@/lib/categories'
+import { getCategoryIconPath } from '@/lib/categories'
 
 const BusinessMap = dynamic(() => import('@/components/listings/BusinessMap'), {
   ssr: false,
@@ -74,11 +75,6 @@ function getDistanceKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-/**
- * Parse URL into a LocationFilter. Suburb wins over Near Me if both present
- * (deterministic tiebreak). This guarantees mutual exclusion at read time,
- * even if the URL somehow ends up with stale params from both modes.
- */
 function parseLocationFilter(params: URLSearchParams): LocationFilter {
   const suburb = params.get('suburb')
   if (suburb && suburb !== 'All') {
@@ -122,7 +118,6 @@ export default function BusinessesPage() {
     () => parseLocationFilter(searchParams),
     [searchParams]
   )
-
 
   useEffect(() => {
     async function fetchBusinesses() {
@@ -180,15 +175,7 @@ export default function BusinessesPage() {
     return results
   }, [businesses, activeCategory, searchQuery, locationFilter, activeCriteria])
 
-  /**
-   * Navigate to a new URL. Instead of merging with the current searchParams
-   * (which can be stale inside callbacks), we read the LIVE URL from
-   * window.location at call time. This avoids the stale-closure trap where
-   * `searchParams` captured when `updateParams` was memoised doesn't reflect
-   * a very recent navigation.
-   */
   const navigate = useCallback((updates: Record<string, string | null>) => {
-    // Read live URL, not the stale searchParams closure
     const current = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search)
       : new URLSearchParams(searchParams.toString())
@@ -205,10 +192,6 @@ export default function BusinessesPage() {
     router.push(query ? `/businesses?${query}` : '/businesses', { scroll: false })
   }, [router, searchParams])
 
-  /**
-   * Location-mode switchers. Each one sets its own keys and explicitly
-   * deletes the other mode's keys — mutual exclusion at write time.
-   */
   const selectSuburb = useCallback((suburb: string) => {
     navigate({
       suburb: suburb === 'All' ? null : suburb,
@@ -316,7 +299,6 @@ export default function BusinessesPage() {
             ))}
           </select>
 
-          {/* Suburb dropdown — selecting any option clears Near Me */}
           <select
             value={suburbSelectValue}
             onChange={e => selectSuburb(e.target.value)}
@@ -328,7 +310,6 @@ export default function BusinessesPage() {
             ))}
           </select>
 
-          {/* Near Me — toggles on/off. Enabling clears suburb. */}
           <div className="flex items-center gap-2">
             <button
               onClick={locationFilter.mode === 'nearMe' ? disableNearMe : enableNearMe}
@@ -614,7 +595,8 @@ function BusinessCard({
   isSelected: boolean
   onClick: () => void
 }) {
-  const color = getCategoryColor(business.category)
+  const iconPath = getCategoryIconPath(business.category)
+
   return (
     <div
       onClick={onClick}
@@ -623,13 +605,22 @@ function BusinessCard({
       }`}
     >
       <Link href={`/businesses/${business.slug}`} onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          {/* Category icon — replaces the small dot, doubles as the visual category cue */}
+          {iconPath ? (
+            <Image
+              src={iconPath}
+              alt=""
+              width={32}
+              height={32}
+              className="flex-shrink-0 mt-0.5"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-stone-100 flex-shrink-0 mt-0.5" />
+          )}
+
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: color }}
-              />
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <span className="text-sm font-medium text-stone-900 hover:text-emerald-700 transition-colors">
                 {business.name}
               </span>
@@ -639,16 +630,16 @@ function BusinessCard({
                 </span>
               )}
             </div>
-            <p className="text-xs text-stone-400 mb-2 pl-4">
+            <p className="text-xs text-stone-400 mb-2">
               {business.suburb} · {business.category}
             </p>
             {business.description && (
-              <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed pl-4">
+              <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">
                 {business.description}
               </p>
             )}
             {business.criteria?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2 pl-4">
+              <div className="flex flex-wrap gap-1 mt-2">
                 {business.criteria.slice(0, 3).map(c => (
                   <span key={c} className="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">
                     {c}
@@ -657,7 +648,8 @@ function BusinessCard({
               </div>
             )}
           </div>
-          <span className="text-stone-300 hover:text-emerald-500 transition-colors flex-shrink-0">→</span>
+
+          <span className="text-stone-300 hover:text-emerald-500 transition-colors flex-shrink-0 self-center">→</span>
         </div>
       </Link>
     </div>
