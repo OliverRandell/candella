@@ -1,7 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Business } from '@/lib/types'
+import {
+  getCategoryColor,
+  getCategoryGradient,
+  getCategoryIconPath,
+} from '@/lib/categories'
+import { getRelatedBusinesses } from '@/lib/related-businesses'
+import BusinessLocationMap from '@/components/listings/BusinessLocationMap'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -22,16 +30,7 @@ export async function generateMetadata({ params }: Props) {
   const description = business.description?.slice(0, 155) ??
     `${business.name} is a sustainable ${business.category.toLowerCase()} business in ${business.suburb}, Melbourne.`
   const url = `${process.env.NEXT_PUBLIC_SITE_URL}/businesses/${slug}`
-
-  const categoryColors: Record<string, string> = {
-    'Cafes & Restaurants': '#A1EDCA',
-    'Fashion': '#EDB1A1',
-    'Groceries': '#EDA1B7',
-    'Home & Living': '#D1A1ED',
-    'Alcohol': '#A1D0ED',
-    'Markets': '#DDEDA1',
-  }
-  const color = categoryColors[business.category] ?? '#A1EDCA'
+  const color = getCategoryColor(business.category)
 
   const ogImageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/og?name=${encodeURIComponent(business.name)}&suburb=${encodeURIComponent(business.suburb)}&category=${encodeURIComponent(business.category)}&color=${encodeURIComponent(color)}`
 
@@ -45,14 +44,7 @@ export async function generateMetadata({ params }: Props) {
       siteName: 'Candella',
       locale: 'en_AU',
       type: 'website',
-      images: [
-        {
-          url: ogImageUrl,
-          width: 1200,
-          height: 630,
-          alt: title,
-        },
-      ],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -71,9 +63,22 @@ export default async function BusinessPage({ params }: Props) {
     .from('businesses')
     .select('*')
     .eq('slug', slug)
-    .single()
+    .single<Business>()
 
   if (!business || error) notFound()
+
+  const isClaimed = !!business.claimed_by
+  const iconPath = getCategoryIconPath(business.category)
+  const gradient = getCategoryGradient(business.category)
+  const hasCoordinates = !!(business.lat && business.lng)
+
+  const credentials = (business.criteria ?? []).filter(Boolean)
+  const hasCredentials = credentials.length > 0
+
+  const relatedBusinesses = await getRelatedBusinesses(
+    { id: business.id, suburb: business.suburb },
+    3
+  )
 
   return (
     <main className="min-h-screen bg-white">
@@ -91,118 +96,289 @@ export default async function BusinessPage({ params }: Props) {
         <span className="text-sm text-stone-500 truncate">{business.name}</span>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      {/* Hero photo / placeholder — full-bleed on mobile, contained on desktop */}
+      <div className="max-w-3xl mx-auto px-0 sm:px-6 pt-0 sm:pt-8">
+        <div
+          className="w-full aspect-[16/9] sm:rounded-xl overflow-hidden flex items-center justify-center"
+          style={{ background: gradient }}
+        >
+          {/* Subtle category icon watermark sits inside the gradient */}
+          {iconPath && (
+            <div className="opacity-50">
+              <Image src={iconPath} alt="" width={80} height={80} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-6 py-10">
 
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            {business.is_verified && (
-              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium">
-                Verified
-              </span>
+        <header className="mb-8">
+          <div className="flex items-start gap-3 mb-2">
+            {iconPath && (
+              <Image
+                src={iconPath}
+                alt=""
+                width={32}
+                height={32}
+                className="flex-shrink-0 mt-1.5"
+              />
             )}
-            {business.is_featured && (
-              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-medium">
-                Featured
-              </span>
-            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-3xl font-semibold text-stone-900 leading-tight">
+                  {business.name}
+                </h1>
+                {business.is_verified && (
+                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium">
+                    Verified
+                  </span>
+                )}
+              </div>
+              <p className="text-stone-400 text-sm mt-1">
+                {business.suburb} · {business.category}
+              </p>
+            </div>
           </div>
-          <h1 className="text-3xl font-semibold text-stone-900 mb-2">
-            {business.name}
-          </h1>
-          <p className="text-stone-400 text-sm">
-            {business.suburb} · {business.category}
-          </p>
-        </div>
+        </header>
 
         {/* Description */}
         {business.description && (
-          <div className="mb-8">
-            <p className="text-stone-600 leading-relaxed">
+          <section className="mb-10">
+            <p className="text-stone-700 text-base leading-relaxed">
               {business.description}
             </p>
-          </div>
+          </section>
         )}
 
-        {/* Tags */}
-        {business.tags?.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-3">
-              Sustainability signals
-            </h2>
+        {/* What makes this place sustainable */}
+        <section className="mb-10">
+          <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-4">
+            What makes this place sustainable
+          </h2>
+          {hasCredentials ? (
             <div className="flex flex-wrap gap-2">
-              {business.tags.map((tag: string) => (
+              {credentials.map((credential: string) => (
                 <span
-                  key={tag}
-                  className="bg-emerald-50 text-emerald-700 text-xs px-3 py-1.5 rounded-full"
+                  key={credential}
+                  className="bg-emerald-50 text-emerald-700 text-sm px-3 py-1.5 rounded-full"
                 >
-                  {tag}
+                  {credential}
                 </span>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Details */}
-        <div className="mb-8 border border-stone-100 rounded-xl divide-y divide-stone-100">
-          {business.address && (
-            <div className="px-4 py-3 flex items-start gap-3">
-              <span className="text-stone-300 text-sm mt-0.5">→</span>
-              <div>
-                <p className="text-xs text-stone-400 mb-0.5">Address</p>
-                <p className="text-sm text-stone-700">{business.address}</p>
-              </div>
+          ) : (
+            <div className="border border-dashed border-stone-200 rounded-xl px-5 py-4">
+              <p className="text-sm text-stone-500">
+                {isClaimed
+                  ? 'Sustainability credentials are being added.'
+                  : (
+                    <>
+                      Sustainability credentials haven&rsquo;t been added yet.{' '}
+                      <Link
+                        href={`/claim?business=${business.slug}`}
+                        className="text-emerald-700 hover:underline font-medium"
+                      >
+                        Claim this listing
+                      </Link>{' '}
+                      to add them.
+                    </>
+                  )}
+              </p>
             </div>
           )}
-          {business.website_url && (
-            <div className="px-4 py-3 flex items-start gap-3">
-              <span className="text-stone-300 text-sm mt-0.5">→</span>
-              <div>
-                <p className="text-xs text-stone-400 mb-0.5">Website</p>
+        </section>
+
+        {/* Practical info */}
+        <section className="mb-10">
+          <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-4">
+            Practical info
+          </h2>
+          <div className="border border-stone-100 rounded-xl divide-y divide-stone-100">
+            {business.address && (
+              <InfoRow label="Address">
+                <p className="text-sm text-stone-700">{business.address}</p>
+                {hasCoordinates && (
+                  
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(business.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-700 hover:underline mt-1 inline-block"
+                  >
+                    Get directions →
+                  </a>
+                )}
+              </InfoRow>
+            )}
+            {business.website_url && (
+              <InfoRow label="Website">
                 
                   <a href={business.website_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-emerald-600 hover:underline break-all"
+                  className="text-sm text-emerald-700 hover:underline break-all"
                 >
-                  {business.website_url.replace(/^https?:\/\//, '')}
+                  {business.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                 </a>
-              </div>
-            </div>
-          )}
-          {business.suburb && (
-            <div className="px-4 py-3 flex items-start gap-3">
-              <span className="text-stone-300 text-sm mt-0.5">→</span>
-              <div>
-                <p className="text-xs text-stone-400 mb-0.5">Suburb</p>
+              </InfoRow>
+            )}
+            {business.instagram_url && (
+              <InfoRow label="Instagram">
+                
+                  <a href={business.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-emerald-700 hover:underline"
+                >
+                  {extractInstagramHandle(business.instagram_url)}
+                </a>
+              </InfoRow>
+            )}
+            <InfoRow label="Opening hours">
+              <p className="text-sm text-stone-500 italic">
+                {isClaimed
+                  ? 'Opening hours are being added.'
+                  : (
+                    <>
+                      Not yet listed.{' '}
+                      <Link
+                        href={`/claim?business=${business.slug}`}
+                        className="text-emerald-700 hover:underline not-italic font-medium"
+                      >
+                        Claim this listing
+                      </Link>{' '}
+                      to add them.
+                    </>
+                  )}
+              </p>
+            </InfoRow>
+            {business.suburb && (
+              <InfoRow label="Area">
                 <Link
                   href={`/suburb/${business.suburb.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="text-sm text-emerald-600 hover:underline"
+                  className="text-sm text-emerald-700 hover:underline"
                 >
-                  More in {business.suburb}
+                  More sustainable businesses in {business.suburb} →
                 </Link>
-              </div>
-            </div>
-          )}
-        </div>
+              </InfoRow>
+            )}
+          </div>
+        </section>
 
-        {/* Claim CTA */}
-        {!business.claimed_by && (
-          <div className="border border-stone-100 rounded-xl px-6 py-5 text-center">
-            <p className="text-sm text-stone-500 mb-1">Is this your business?</p>
-            <p className="text-xs text-stone-400 mb-4">
-              Claim this listing to update your details and add your sustainability credentials.
+        {/* Location map */}
+        {hasCoordinates && (
+          <section className="mb-10">
+            <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-4">
+              Location
+            </h2>
+            <BusinessLocationMap business={business} />
+          </section>
+        )}
+
+        {/* Related businesses */}
+        {relatedBusinesses.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-4">
+              More in {business.suburb}
+            </h2>
+            <div className="divide-y divide-stone-100 border-y border-stone-100">
+              {relatedBusinesses.map((related) => (
+                <RelatedBusinessRow key={related.id} business={related} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Bottom: claim CTA or owner-managed indicator */}
+        {!isClaimed ? (
+          <section className="border border-stone-100 rounded-xl px-6 py-6 text-center bg-stone-50/50">
+            <p className="text-sm font-medium text-stone-900 mb-1">
+              Is this your business?
+            </p>
+            <p className="text-xs text-stone-500 mb-4 max-w-sm mx-auto leading-relaxed">
+              Claim this listing to add photos, opening hours, your sustainability credentials, and a verified badge.
             </p>
             <Link
               href={`/claim?business=${business.slug}`}
-              className="inline-block bg-stone-900 text-white text-sm px-5 py-2.5 rounded-full hover:bg-stone-700 transition-colors"
+              className="inline-block bg-stone-900 text-white text-sm font-medium px-5 py-2.5 rounded-full hover:bg-stone-700 transition-colors"
             >
               Claim this listing
             </Link>
-          </div>
+          </section>
+        ) : (
+          <section className="text-center">
+            <p className="text-xs text-stone-400">
+              This listing is managed by its owner.
+            </p>
+          </section>
         )}
 
       </div>
     </main>
   )
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="px-4 py-3 flex items-start gap-3">
+      <span className="text-stone-300 text-sm mt-0.5 flex-shrink-0">→</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-stone-400 mb-0.5">{label}</p>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function RelatedBusinessRow({ business }: { business: Business }) {
+  const iconPath = getCategoryIconPath(business.category)
+  return (
+    <Link
+      href={`/businesses/${business.slug}`}
+      className="flex items-center gap-3 py-3 group"
+    >
+      {iconPath ? (
+        <Image
+          src={iconPath}
+          alt=""
+          width={32}
+          height={32}
+          className="flex-shrink-0"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-stone-100 flex-shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-stone-900 group-hover:text-emerald-700 transition-colors truncate">
+            {business.name}
+          </span>
+          {business.is_verified && (
+            <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+              Verified
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-stone-400 truncate">
+          {business.category}
+        </p>
+      </div>
+      <span className="text-stone-300 group-hover:text-emerald-500 transition-colors flex-shrink-0">→</span>
+    </Link>
+  )
+}
+
+/**
+ * Best-effort extraction of an Instagram handle from a profile URL.
+ * Falls back to the full URL if the format is unexpected.
+ */
+function extractInstagramHandle(url: string): string {
+  try {
+    const u = new URL(url)
+    const handle = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0]
+    return handle ? `@${handle}` : url.replace(/^https?:\/\//, '')
+  } catch {
+    return url.replace(/^https?:\/\//, '')
+  }
 }

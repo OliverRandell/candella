@@ -324,7 +324,7 @@ export default function BusinessesPage() {
               <span style={{ fontSize: '14px' }}>◎</span>
               {locationLoading
                 ? 'Locating...'
-                : locationFilter.mode === 'nearMe' ? 'Near me · on' : 'Near me'}
+                : locationFilter.mode === 'nearMe' ? 'Near me' : 'Near me'}
             </button>
 
             {locationFilter.mode === 'nearMe' && (

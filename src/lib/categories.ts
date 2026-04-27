@@ -39,11 +39,6 @@ export const CATEGORIES = {
 
 export type CategoryName = keyof typeof CATEGORIES
 
-/**
- * The canonical list of categories, in display order. Use this anywhere you
- * need to iterate (homepage tiles, filter dropdown, etc.) so the order is
- * consistent across the app.
- */
 export const CATEGORY_NAMES = Object.keys(CATEGORIES) as CategoryName[]
 
 export function getCategoryColor(category: string): string {
@@ -56,4 +51,14 @@ export function getCategoryTextColor(category: string): string {
 
 export function getCategoryIconPath(category: string): string | null {
   return CATEGORIES[category as CategoryName]?.iconPath ?? null
+}
+
+/**
+ * Soft, two-stop gradient using the category colour. Used as the photo
+ * placeholder on unclaimed listings — gives the page visual presence
+ * without faking content.
+ */
+export function getCategoryGradient(category: string): string {
+  const color = getCategoryColor(category)
+  return `linear-gradient(135deg, ${color}55 0%, ${color}22 100%)`
 }
