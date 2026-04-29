@@ -8,6 +8,9 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Business } from '@/lib/types'
 import { getCategoryIconPath } from '@/lib/categories'
+import { formatTagList } from '@/lib/tags'
+import { CRITERIA_NAMES } from '@/lib/criteria'
+
 
 const BusinessMap = dynamic(() => import('@/components/listings/BusinessMap'), {
   ssr: false,
@@ -34,21 +37,6 @@ const RADIUS_OPTIONS = [
   { label: '10 km', value: 10 },
   { label: '20 km', value: 20 },
   { label: '50 km', value: 50 },
-]
-
-const CRITERIA_OPTIONS = [
-  'Vegan',
-  'Organic Certified',
-  'Australian Made',
-  'Female Founded',
-  'BIPOC Owned',
-  'Cruelty Free',
-  'Zero Waste',
-  'Circular Materials',
-  'Brand Giveback',
-  'Regenerative',
-  'B Corp Certified',
-  'Size Inclusive',
 ]
 
 const DEFAULT_RADIUS = 5
@@ -548,7 +536,7 @@ export default function BusinessesPage() {
                 Sustainability criteria
               </h3>
               <div className="space-y-2">
-                {CRITERIA_OPTIONS.map(criterion => (
+                {CRITERIA_NAMES.map(criterion => (
                   <label
                     key={criterion}
                     className="flex items-center gap-3 cursor-pointer group"
@@ -638,15 +626,21 @@ function BusinessCard({
                 {business.description}
               </p>
             )}
-            {business.criteria?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {business.criteria.slice(0, 3).map(c => (
-                  <span key={c} className="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">
-                    {c}
-                  </span>
-                ))}
-              </div>
-            )}
+            {(() => {
+              // Prefer real criteria when populated; fall back to tags as a placeholder signal
+              const credentials = business.criteria?.length
+                ? business.criteria.slice(0, 3).join(', ')
+                : formatTagList(business.tags, 3)
+
+              if (!credentials) return null
+
+              return (
+                <p className="text-xs text-stone-500 mt-2 leading-relaxed">
+                  <span className="text-stone-400">Why it qualifies: </span>
+                  {credentials}
+                </p>
+              )
+            })()}
           </div>
 
           <span className="text-stone-300 hover:text-emerald-500 transition-colors flex-shrink-0 self-center">→</span>

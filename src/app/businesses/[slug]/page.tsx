@@ -171,20 +171,30 @@ export default async function BusinessPage({ params }: Props) {
           ) : (
             <div className="border border-dashed border-stone-200 rounded-xl px-5 py-4">
               <p className="text-sm text-stone-500">
-                {isClaimed
-                  ? 'Sustainability credentials are being added.'
-                  : (
-                    <>
-                      Sustainability credentials haven&rsquo;t been added yet.{' '}
-                      <Link
-                        href={`/claim?business=${business.slug}`}
-                        className="text-emerald-700 hover:underline font-medium"
-                      >
-                        Claim this listing
-                      </Link>{' '}
-                      to add them.
-                    </>
-                  )}
+                {isClaimed ? (
+                  <>
+                    Sustainability credentials are being added. Read about{' '}
+                    <Link href="/about" className="text-emerald-700 hover:underline font-medium">
+                      Candella&rsquo;s standard
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Sustainability credentials haven&rsquo;t been added yet.{' '}
+                    <Link
+                      href={`/claim?business=${business.slug}`}
+                      className="text-emerald-700 hover:underline font-medium"
+                    >
+                      Claim this listing
+                    </Link>{' '}
+                    to add them, or read about{' '}
+                    <Link href="/about" className="text-emerald-700 hover:underline font-medium">
+                      Candella&rsquo;s standard
+                    </Link>
+                    .
+                  </>
+                )}
               </p>
             </div>
           )}

@@ -3,11 +3,6 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { CATEGORIES, CATEGORY_NAMES } from '@/lib/categories'
 
-/**
- * Top suburbs by listing count. Fetched server-side so the homepage stays
- * static-friendly. Falls back to an empty list on error — the section will
- * just not render its tiles, rather than crashing.
- */
 async function getTopSuburbs(limit = 8): Promise<{ name: string; count: number }[]> {
   try {
     const supabase = await createClient()
@@ -41,12 +36,20 @@ export default async function HomePage() {
       {/* Nav */}
       <nav className="border-b border-stone-100 px-6 py-4 flex items-center justify-between">
         <span className="text-lg font-semibold tracking-tight text-stone-900">candella</span>
-        <Link
-          href="/businesses"
-          className="text-sm text-stone-500 hover:text-stone-900 transition-colors"
-        >
-          Browse all
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link
+            href="/about"
+            className="text-sm text-stone-500 hover:text-stone-900 transition-colors"
+          >
+            About
+          </Link>
+          <Link
+            href="/businesses"
+            className="text-sm text-stone-500 hover:text-stone-900 transition-colors"
+          >
+            Browse all
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
@@ -69,7 +72,33 @@ export default async function HomePage() {
         </Link>
       </section>
 
-      {/* Categories — links into the browse page with the filter pre-applied */}
+      {/* Why Candella */}
+      <section className="px-6 py-12 max-w-2xl mx-auto border-t border-stone-100">
+        <p className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-4">
+          Why Candella
+        </p>
+        <div className="text-stone-700 leading-relaxed space-y-4 mb-6">
+          <p>
+            Melbourne is full of businesses doing the work: sourcing carefully,
+            paying fairly, putting thought into where their materials come from
+            and where their waste ends up.
+          </p>
+          <p>
+            Candella is a curated guide to find them, in one place, organised
+            by what you\u2019re actually looking for: a coffee, a jumper, a
+            Saturday market. We\u2019re building it slowly, business by
+            business, because that\u2019s the only way to do it properly.
+          </p>
+        </div>
+        <Link
+          href="/about"
+          className="text-sm font-medium text-emerald-700 hover:underline"
+        >
+          Read more about our standard \u2192
+        </Link>
+      </section>
+
+      {/* Categories */}
       <section className="px-6 py-12 max-w-3xl mx-auto">
         <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-6">
           Browse by category
@@ -97,7 +126,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Suburbs — top by listing count, pulled from the database */}
+      {/* Suburbs */}
       {topSuburbs.length > 0 && (
         <section className="px-6 py-12 max-w-3xl mx-auto">
           <h2 className="text-xs font-medium tracking-widest text-stone-400 uppercase mb-6">
@@ -121,12 +150,21 @@ export default async function HomePage() {
       {/* Footer CTA */}
       <section className="px-6 py-16 max-w-2xl mx-auto text-center border-t border-stone-100 mt-8">
         <p className="text-stone-500 text-sm mb-3">Own a sustainable business in Melbourne?</p>
-        <Link
-          href="/claim"
-          className="text-sm font-medium text-emerald-700 hover:underline"
-        >
-          List your business for free →
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href="/claim"
+            className="text-sm font-medium text-emerald-700 hover:underline"
+          >
+            List your business for free \u2192
+          </Link>
+          <span className="text-stone-200" aria-hidden="true">\u00b7</span>
+          <Link
+            href="/about"
+            className="text-sm text-stone-500 hover:text-stone-900 hover:underline"
+          >
+            About our standard
+          </Link>
+        </div>
       </section>
 
     </main>
