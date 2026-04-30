@@ -10,9 +10,12 @@ import {
 } from '@/lib/categories'
 import { getRelatedBusinesses } from '@/lib/related-businesses'
 import BusinessLocationMap from '@/components/listings/BusinessLocationMap'
+import VerifiedBadge from '@/components/VerifiedBadge'
+import UnclaimedBanner from '@/components/UnclaimedBanner'
 
 type Props = {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ ref?: string }>
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -26,7 +29,7 @@ export async function generateMetadata({ params }: Props) {
 
   if (!business) return {}
 
-  const title = `${business.name} — Candella`
+  const title = `${business.name} \u2014 Candella`
   const description = business.description?.slice(0, 155) ??
     `${business.name} is a sustainable ${business.category.toLowerCase()} business in ${business.suburb}, Melbourne.`
   const url = `${process.env.NEXT_PUBLIC_SITE_URL}/businesses/${slug}`
@@ -55,8 +58,9 @@ export async function generateMetadata({ params }: Props) {
   }
 }
 
-export default async function BusinessPage({ params }: Props) {
+export default async function BusinessPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const { ref } = await searchParams
   const supabase = await createClient()
 
   const { data: business, error } = await supabase
@@ -71,6 +75,11 @@ export default async function BusinessPage({ params }: Props) {
   const iconPath = getCategoryIconPath(business.category)
   const gradient = getCategoryGradient(business.category)
   const hasCoordinates = !!(business.lat && business.lng)
+
+  // Show the unclaimed banner only when the visitor arrived from outreach
+  // (?ref=<slug> in the URL). Regular browsing traffic still sees the soft
+  // bottom-of-page CTA, which is enough for them.
+  const showUnclaimedBanner = !isClaimed && !!ref
 
   const credentials = (business.criteria ?? []).filter(Boolean)
   const hasCredentials = credentials.length > 0
@@ -96,13 +105,12 @@ export default async function BusinessPage({ params }: Props) {
         <span className="text-sm text-stone-500 truncate">{business.name}</span>
       </nav>
 
-      {/* Hero photo / placeholder — full-bleed on mobile, contained on desktop */}
+      {/* Hero photo / placeholder */}
       <div className="max-w-3xl mx-auto px-0 sm:px-6 pt-0 sm:pt-8">
         <div
           className="w-full aspect-[16/9] sm:rounded-xl overflow-hidden flex items-center justify-center"
           style={{ background: gradient }}
         >
-          {/* Subtle category icon watermark sits inside the gradient */}
           {iconPath && (
             <div className="opacity-50">
               <Image src={iconPath} alt="" width={80} height={80} />
@@ -112,6 +120,14 @@ export default async function BusinessPage({ params }: Props) {
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-10">
+
+        {/* Outreach banner — only when ?ref= is present and listing is unclaimed */}
+        {showUnclaimedBanner && (
+          <UnclaimedBanner
+            businessName={business.name}
+            businessSlug={business.slug}
+          />
+        )}
 
         {/* Header */}
         <header className="mb-8">
@@ -130,14 +146,10 @@ export default async function BusinessPage({ params }: Props) {
                 <h1 className="text-3xl font-semibold text-stone-900 leading-tight">
                   {business.name}
                 </h1>
-                {business.is_verified && (
-                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium">
-                    Verified
-                  </span>
-                )}
+                {business.is_verified && <VerifiedBadge />}
               </div>
               <p className="text-stone-400 text-sm mt-1">
-                {business.suburb} · {business.category}
+                {business.suburb} \u00b7 {business.category}
               </p>
             </div>
           </div>
@@ -175,13 +187,13 @@ export default async function BusinessPage({ params }: Props) {
                   <>
                     Sustainability credentials are being added. Read about{' '}
                     <Link href="/about" className="text-emerald-700 hover:underline font-medium">
-                      Candella&rsquo;s standard
+                      Candella\u2019s standard
                     </Link>
                     .
                   </>
                 ) : (
                   <>
-                    Sustainability credentials haven&rsquo;t been added yet.{' '}
+                    Sustainability credentials haven\u2019t been added yet.{' '}
                     <Link
                       href={`/claim?business=${business.slug}`}
                       className="text-emerald-700 hover:underline font-medium"
@@ -190,7 +202,7 @@ export default async function BusinessPage({ params }: Props) {
                     </Link>{' '}
                     to add them, or read about{' '}
                     <Link href="/about" className="text-emerald-700 hover:underline font-medium">
-                      Candella&rsquo;s standard
+                      Candella\u2019s standard
                     </Link>
                     .
                   </>
@@ -210,21 +222,21 @@ export default async function BusinessPage({ params }: Props) {
               <InfoRow label="Address">
                 <p className="text-sm text-stone-700">{business.address}</p>
                 {hasCoordinates && (
-                  
-                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(business.address)}`}
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(business.address)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-emerald-700 hover:underline mt-1 inline-block"
                   >
-                    Get directions →
+                    Get directions \u2192
                   </a>
                 )}
               </InfoRow>
             )}
             {business.website_url && (
               <InfoRow label="Website">
-                
-                  <a href={business.website_url}
+                <a
+                  href={business.website_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-emerald-700 hover:underline break-all"
@@ -235,8 +247,8 @@ export default async function BusinessPage({ params }: Props) {
             )}
             {business.instagram_url && (
               <InfoRow label="Instagram">
-                
-                  <a href={business.instagram_url}
+                <a
+                  href={business.instagram_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-emerald-700 hover:underline"
@@ -247,20 +259,20 @@ export default async function BusinessPage({ params }: Props) {
             )}
             <InfoRow label="Opening hours">
               <p className="text-sm text-stone-500 italic">
-                {isClaimed
-                  ? 'Opening hours are being added.'
-                  : (
-                    <>
-                      Not yet listed.{' '}
-                      <Link
-                        href={`/claim?business=${business.slug}`}
-                        className="text-emerald-700 hover:underline not-italic font-medium"
-                      >
-                        Claim this listing
-                      </Link>{' '}
-                      to add them.
-                    </>
-                  )}
+                {isClaimed ? (
+                  'Opening hours are being added.'
+                ) : (
+                  <>
+                    Not yet listed.{' '}
+                    <Link
+                      href={`/claim?business=${business.slug}`}
+                      className="text-emerald-700 hover:underline not-italic font-medium"
+                    >
+                      Claim this listing
+                    </Link>{' '}
+                    to add them.
+                  </>
+                )}
               </p>
             </InfoRow>
             {business.suburb && (
@@ -269,7 +281,7 @@ export default async function BusinessPage({ params }: Props) {
                   href={`/suburb/${business.suburb.toLowerCase().replace(/\s+/g, '-')}`}
                   className="text-sm text-emerald-700 hover:underline"
                 >
-                  More sustainable businesses in {business.suburb} →
+                  More sustainable businesses in {business.suburb} \u2192
                 </Link>
               </InfoRow>
             )}
@@ -307,7 +319,7 @@ export default async function BusinessPage({ params }: Props) {
               Is this your business?
             </p>
             <p className="text-xs text-stone-500 mb-4 max-w-sm mx-auto leading-relaxed">
-              Claim this listing to add photos, opening hours, your sustainability credentials, and a verified badge.
+              Claim this listing to add photos, opening hours, your sustainability credentials, and the verified badge.
             </p>
             <Link
               href={`/claim?business=${business.slug}`}
@@ -332,7 +344,7 @@ export default async function BusinessPage({ params }: Props) {
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-4 py-3 flex items-start gap-3">
-      <span className="text-stone-300 text-sm mt-0.5 flex-shrink-0">→</span>
+      <span className="text-stone-300 text-sm mt-0.5 flex-shrink-0">\u2192</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-stone-400 mb-0.5">{label}</p>
         {children}
@@ -364,25 +376,17 @@ function RelatedBusinessRow({ business }: { business: Business }) {
           <span className="text-sm font-medium text-stone-900 group-hover:text-emerald-700 transition-colors truncate">
             {business.name}
           </span>
-          {business.is_verified && (
-            <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
-              Verified
-            </span>
-          )}
+          {business.is_verified && <VerifiedBadge variant="compact" />}
         </div>
         <p className="text-xs text-stone-400 truncate">
           {business.category}
         </p>
       </div>
-      <span className="text-stone-300 group-hover:text-emerald-500 transition-colors flex-shrink-0">→</span>
+      <span className="text-stone-300 group-hover:text-emerald-500 transition-colors flex-shrink-0">\u2192</span>
     </Link>
   )
 }
 
-/**
- * Best-effort extraction of an Instagram handle from a profile URL.
- * Falls back to the full URL if the format is unexpected.
- */
 function extractInstagramHandle(url: string): string {
   try {
     const u = new URL(url)

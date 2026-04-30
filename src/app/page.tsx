@@ -85,16 +85,16 @@ export default async function HomePage() {
           </p>
           <p>
             Candella is a curated guide to find them, in one place, organised
-            by what you\u2019re actually looking for: a coffee, a jumper, a
-            Saturday market. We\u2019re building it slowly, business by
-            business, because that\u2019s the only way to do it properly.
+            by what you're actually looking for: a coffee, a jumper, a
+            Saturday market. We're building it slowly, business by
+            business, because that's the only way to do it properly.
           </p>
         </div>
         <Link
           href="/about"
           className="text-sm font-medium text-emerald-700 hover:underline"
         >
-          Read more about our standard \u2192
+          Read more about us
         </Link>
       </section>
 
@@ -155,9 +155,9 @@ export default async function HomePage() {
             href="/claim"
             className="text-sm font-medium text-emerald-700 hover:underline"
           >
-            List your business for free \u2192
+            List your business for free
           </Link>
-          <span className="text-stone-200" aria-hidden="true">\u00b7</span>
+          <span className="text-stone-200" aria-hidden="true">|</span>
           <Link
             href="/about"
             className="text-sm text-stone-500 hover:text-stone-900 hover:underline"
