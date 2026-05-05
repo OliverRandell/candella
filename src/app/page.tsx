@@ -9,6 +9,7 @@ async function getTopSuburbs(limit = 8): Promise<{ name: string; count: number }
     const { data, error } = await supabase
       .from('businesses')
       .select('suburb')
+      .eq('status', 'approved')
 
     if (error || !data) return []
 

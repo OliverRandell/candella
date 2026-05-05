@@ -22,14 +22,15 @@ export async function getRelatedBusinesses(
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
-      .from('businesses')
-      .select('*')
-      .eq('suburb', currentBusiness.suburb)
-      .neq('id', currentBusiness.id)
-      .order('is_verified', { ascending: false })
-      .order('is_featured', { ascending: false })
-      .order('name')
-      .limit(limit)
+    .from('businesses')
+    .select('*')
+    .eq('status', 'approved')
+    .eq('suburb', currentBusiness.suburb)
+    .neq('id', currentBusiness.id)
+    .order('is_verified', { ascending: false })
+    .order('is_featured', { ascending: false })
+    .order('name')
+    .limit(limit)
 
     if (error || !data) return []
     return data as Business[]

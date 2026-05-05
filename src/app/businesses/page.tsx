@@ -113,6 +113,7 @@ export default function BusinessesPage() {
       const { data } = await supabase
         .from('businesses')
         .select('*')
+        .eq('status', 'approved')
         .order('is_featured', { ascending: false })
         .order('name')
 

@@ -5,12 +5,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createClient()
 
   const { data: businesses } = await supabase
-    .from('businesses')
-    .select('slug, updated_at')
+  .from('businesses')
+  .select('slug, updated_at')
+  .eq('status', 'approved')
 
   const { data: suburbs } = await supabase
-    .from('businesses')
-    .select('suburb')
+  .from('businesses')
+  .select('suburb')
+  .eq('status', 'approved')
 
   const uniqueSuburbs = Array.from(
     new Set((suburbs ?? []).map(b => b.suburb).filter(Boolean))

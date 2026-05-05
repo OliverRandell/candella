@@ -24,6 +24,7 @@ export default async function SuburbPage({ params }: Props) {
   const { data: businesses } = await supabase
     .from('businesses')
     .select('*')
+    .eq('status', 'approved')
     .ilike('suburb', suburbName)
     .order('is_featured', { ascending: false })
     .order('name')

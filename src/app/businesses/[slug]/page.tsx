@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: Props) {
     .from('businesses')
     .select('name, description, suburb, category')
     .eq('slug', slug)
+    .eq('status', 'approved')
     .single()
 
   if (!business) return {}
@@ -67,6 +68,7 @@ export default async function BusinessPage({ params, searchParams }: Props) {
     .from('businesses')
     .select('*')
     .eq('slug', slug)
+    .eq('status', 'approved')
     .single<Business>()
 
   if (!business || error) notFound()
