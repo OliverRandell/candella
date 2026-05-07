@@ -12,12 +12,6 @@ type SubmissionState =
   | { kind: 'success'; businessName: string }
   | { kind: 'error'; message: string }
 
-/**
- * Generate a URL-safe slug from a business name. The slug is appended with a
- * short random suffix to avoid collisions with existing rows. We don't want
- * to query for collisions client-side (it would expose row counts), and the
- * server-side reviewer can rename if needed during approval.
- */
 function generateSlug(name: string): string {
   const base = name
     .toLowerCase()
@@ -34,7 +28,7 @@ function isValidEmail(value: string): boolean {
 }
 
 function isValidUrl(value: string): boolean {
-  if (!value) return true // optional fields are valid when empty
+  if (!value) return true
   try {
     const url = new URL(value.startsWith('http') ? value : `https://${value}`)
     return url.hostname.includes('.')
@@ -74,19 +68,14 @@ export default function SubmitBusinessPage() {
   function validate(): Record<string, string> {
     const errors: Record<string, string> = {}
 
-    if (name.trim().length < 2) {
-      errors.name = 'Please enter the business name.'
-    }
-    if (!suburb.trim()) {
-      errors.suburb = 'Please enter the suburb.'
-    }
-    if (!category) {
-      errors.category = 'Please select a category.'
-    }
+    if (name.trim().length < 2) errors.name = 'Please enter the business name.'
+    if (!suburb.trim()) errors.suburb = 'Please enter the suburb.'
+    if (!category) errors.category = 'Please select a category.'
+
     if (!submitterEmail.trim()) {
       errors.submitterEmail = 'We need an email to follow up.'
     } else if (!isValidEmail(submitterEmail)) {
-      errors.submitterEmail = 'That email doesn\u2019t look right.'
+      errors.submitterEmail = "That email doesn't look right."
     }
 
     const hasContact = website.trim() || instagram.trim()
@@ -94,10 +83,10 @@ export default function SubmitBusinessPage() {
       errors.website = 'A website or Instagram URL helps us verify the business.'
     }
     if (website && !isValidUrl(website)) {
-      errors.website = 'That URL doesn\u2019t look right.'
+      errors.website = "That URL doesn't look right."
     }
     if (instagram && !isValidUrl(instagram)) {
-      errors.instagram = 'That Instagram URL doesn\u2019t look right.'
+      errors.instagram = "That Instagram URL doesn't look right."
     }
 
     return errors
@@ -109,7 +98,6 @@ export default function SubmitBusinessPage() {
     const errors = validate()
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) {
-      // Scroll to first error
       const firstErrorField = Object.keys(errors)[0]
       document.getElementById(firstErrorField)?.scrollIntoView({
         behavior: 'smooth',
@@ -122,6 +110,7 @@ export default function SubmitBusinessPage() {
 
     const supabase = createClient()
     const trimmedName = name.trim()
+    const trimmedEmail = submitterEmail.trim()
 
     const { error } = await supabase.from('businesses').insert({
       name: trimmedName,
@@ -136,7 +125,7 @@ export default function SubmitBusinessPage() {
       instagram_url: instagram ? normaliseUrl(instagram) : null,
       criteria: selectedCriteria,
       tags: [],
-      submitted_email: submitterEmail.trim(),
+      submitted_email: trimmedEmail,
       submission_notes: submissionNotes.trim() || null,
       status: 'pending',
     })
@@ -152,27 +141,42 @@ export default function SubmitBusinessPage() {
       return
     }
 
+    // Fire email notifications. We don't await the response or check for
+    // failure \u2014 the submission itself succeeded, and email is best-effort.
+    fetch('/api/email/submission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessName: trimmedName,
+        suburb: suburb.trim(),
+        category,
+        website: website ? normaliseUrl(website) : null,
+        instagram: instagram ? normaliseUrl(instagram) : null,
+        description: description.trim() || null,
+        address: address.trim() || null,
+        submissionNotes: submissionNotes.trim() || null,
+        criteria: selectedCriteria,
+        submitterEmail: trimmedEmail,
+      }),
+    }).catch(err => {
+      // eslint-disable-next-line no-console
+      console.error('[submit] email notification failed:', err)
+    })
+
     setState({ kind: 'success', businessName: trimmedName })
   }
 
   return (
     <main className="min-h-screen bg-white">
-      {/* Nav */}
       <nav className="border-b border-stone-100 px-6 py-4 flex items-center justify-between">
         <Link href="/" className="text-lg font-semibold tracking-tight text-stone-900">
           candella
         </Link>
         <div className="flex items-center gap-6">
-          <Link
-            href="/about"
-            className="text-sm text-stone-500 hover:text-stone-900 transition-colors"
-          >
+          <Link href="/about" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">
             About
           </Link>
-          <Link
-            href="/businesses"
-            className="text-sm text-stone-500 hover:text-stone-900 transition-colors"
-          >
+          <Link href="/businesses" className="text-sm text-stone-500 hover:text-stone-900 transition-colors">
             Browse all
           </Link>
         </div>
@@ -183,7 +187,6 @@ export default function SubmitBusinessPage() {
           <SuccessView businessName={state.businessName} />
         ) : (
           <>
-            {/* Header */}
             <header className="mb-10">
               <p className="text-xs font-medium tracking-widest text-emerald-700 uppercase mb-3">
                 Submit a business
@@ -199,13 +202,7 @@ export default function SubmitBusinessPage() {
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-7" noValidate>
-              {/* Business name */}
-              <Field
-                id="name"
-                label="Business name"
-                error={fieldErrors.name}
-                required
-              >
+              <Field id="name" label="Business name" error={fieldErrors.name} required>
                 <input
                   id="name"
                   type="text"
@@ -217,7 +214,6 @@ export default function SubmitBusinessPage() {
                 />
               </Field>
 
-              {/* Suburb */}
               <Field
                 id="suburb"
                 label="Suburb"
@@ -236,13 +232,7 @@ export default function SubmitBusinessPage() {
                 />
               </Field>
 
-              {/* Category */}
-              <Field
-                id="category"
-                label="Category"
-                error={fieldErrors.category}
-                required
-              >
+              <Field id="category" label="Category" error={fieldErrors.category} required>
                 <select
                   id="category"
                   value={category}
@@ -250,14 +240,13 @@ export default function SubmitBusinessPage() {
                   className={inputClassName(fieldErrors.category) + ' bg-white'}
                   required
                 >
-                  <option value="">Select a category\u2026</option>
+                  <option value="">Select a category…</option>
                   {CATEGORY_NAMES.map(name => (
                     <option key={name} value={name}>{name}</option>
                   ))}
                 </select>
               </Field>
 
-              {/* Website */}
               <Field
                 id="website"
                 label="Website"
@@ -274,12 +263,7 @@ export default function SubmitBusinessPage() {
                 />
               </Field>
 
-              {/* Instagram */}
-              <Field
-                id="instagram"
-                label="Instagram"
-                error={fieldErrors.instagram}
-              >
+              <Field id="instagram" label="Instagram" error={fieldErrors.instagram}>
                 <input
                   id="instagram"
                   type="text"
@@ -290,12 +274,7 @@ export default function SubmitBusinessPage() {
                 />
               </Field>
 
-              {/* Address (optional) */}
-              <Field
-                id="address"
-                label="Address"
-                hint="Optional. Helps if they have a physical location."
-              >
+              <Field id="address" label="Address" hint="Optional. Helps if they have a physical location.">
                 <input
                   id="address"
                   type="text"
@@ -306,50 +285,40 @@ export default function SubmitBusinessPage() {
                 />
               </Field>
 
-              {/* Description (optional) */}
-              <Field
-                id="description"
-                label="Short description"
-                hint="Optional. One or two sentences about the business."
-              >
+              <Field id="description" label="Short description" hint="Optional. One or two sentences about the business.">
                 <textarea
                   id="description"
                   rows={3}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="What do they do? What\u2019s their thing?"
+                  placeholder="What do they do? What's their thing?"
                   className={inputClassName() + ' resize-none'}
                 />
               </Field>
 
-              {/* Why sustainable — the most important field */}
               <Field
                 id="submissionNotes"
                 label="What makes them sustainable?"
-                hint="Optional but helpful. The more specific, the better \u2014 suppliers, certifications, materials, practices. Anything that helps us understand why they belong on the directory."
+                hint="Optional but helpful. The more specific, the better — suppliers, certifications, materials, practices. Anything that helps us understand why they belong on the directory."
               >
                 <textarea
                   id="submissionNotes"
                   rows={5}
                   value={submissionNotes}
                   onChange={e => setSubmissionNotes(e.target.value)}
-                  placeholder="e.g. They source organic cotton from a single farm in NSW, do all their dyeing locally, and the founder is open about which of their suppliers they\u2019re still working to verify."
+                  placeholder="e.g. They source organic cotton from a single farm in NSW, do all their dyeing locally, and the founder is open about which of their suppliers they're still working to verify."
                   className={inputClassName() + ' resize-y'}
                 />
               </Field>
 
-              {/* Criteria checkboxes */}
               <Field
                 id="criteria"
                 label="Which criteria do they meet?"
-                hint="Optional. Pick any that apply \u2014 we\u2019ll verify before listing."
+                hint="Optional. Pick any that apply — we'll verify before listing."
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mt-1">
                   {CRITERIA_NAMES.map(criterion => (
-                    <label
-                      key={criterion}
-                      className="flex items-center gap-2.5 cursor-pointer group py-1"
-                    >
+                    <label key={criterion} className="flex items-center gap-2.5 cursor-pointer group py-1">
                       <input
                         type="checkbox"
                         checked={selectedCriteria.includes(criterion)}
@@ -364,13 +333,12 @@ export default function SubmitBusinessPage() {
                 </div>
               </Field>
 
-              {/* Submitter email */}
               <Field
                 id="submitterEmail"
                 label="Your email"
                 error={fieldErrors.submitterEmail}
                 required
-                hint="So we can confirm receipt and follow up if we approve. We don\u2019t share it."
+                hint="So we can confirm receipt and follow up. We don't share it."
               >
                 <input
                   id="submitterEmail"
@@ -383,24 +351,22 @@ export default function SubmitBusinessPage() {
                 />
               </Field>
 
-              {/* Error banner */}
               {state.kind === 'error' && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
                   <p className="text-sm text-red-800">{state.message}</p>
                 </div>
               )}
 
-              {/* Submit */}
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={state.kind === 'submitting'}
                   className="bg-stone-900 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-stone-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {state.kind === 'submitting' ? 'Submitting\u2026' : 'Submit for review'}
+                  {state.kind === 'submitting' ? 'Submitting…' : 'Submit for review'}
                 </button>
                 <p className="text-xs text-stone-400 mt-3">
-                  We review every submission. You\u2019ll hear back by email within
+                  We review every submission. You'll hear back by email within
                   a few days.
                 </p>
               </div>
@@ -411,8 +377,6 @@ export default function SubmitBusinessPage() {
     </main>
   )
 }
-
-/* ---------- Subcomponents ---------- */
 
 function Field({
   id,
@@ -435,12 +399,8 @@ function Field({
         {label}
         {required && <span className="text-stone-400 ml-1" aria-hidden="true">*</span>}
       </label>
-      {hint && !error && (
-        <p className="text-xs text-stone-500 mb-2 leading-relaxed">{hint}</p>
-      )}
-      {error && (
-        <p className="text-xs text-red-600 mb-2 leading-relaxed">{error}</p>
-      )}
+      {hint && !error && <p className="text-xs text-stone-500 mb-2 leading-relaxed">{hint}</p>}
+      {error && <p className="text-xs text-red-600 mb-2 leading-relaxed">{error}</p>}
       {children}
     </div>
   )
@@ -450,55 +410,35 @@ function SuccessView({ businessName }: { businessName: string }) {
   return (
     <div className="py-10 md:py-16">
       <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-6">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="w-6 h-6 text-emerald-700"
-          aria-hidden="true"
-        >
-          <path
-            fillRule="evenodd"
-            d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.41 0l-3.5-3.5a1 1 0 011.41-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z"
-            clipRule="evenodd"
-          />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-emerald-700" aria-hidden="true">
+          <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.41 0l-3.5-3.5a1 1 0 011.41-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
         </svg>
       </div>
       <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-stone-900 mb-4">
-        Thanks \u2014 we\u2019ve got it.
+        Thanks — we've got it.
       </h1>
       <div className="text-stone-700 leading-relaxed space-y-4 mb-8">
         <p>
-          Your submission for <span className="font-medium">{businessName}</span>{' '}
-          is in our queue. We review every business by hand, which means it
-          might take a few days. We\u2019ll email you either way \u2014 if
-          we\u2019re approving the listing, if we need more information, or if
-          we\u2019ve decided not to include it.
+          Your submission for <span className="font-medium">{businessName}</span> is in our queue.
+          We review every business by hand, which means it might take a few days. We've sent a
+          confirmation email — check your inbox. We'll follow up either way: if we're approving the
+          listing, if we need more information, or if we've decided not to include it.
         </p>
         <p>
-          In the meantime, if you know anyone else who&rsquo;d belong here,
-          we&rsquo;d love to hear about them too.
+          In the meantime, if you know anyone else who'd belong here, we'd love to hear about them too.
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Link
-          href="/businesses"
-          className="inline-block bg-stone-900 text-white text-sm font-medium px-5 py-2.5 rounded-full hover:bg-stone-700 transition-colors"
-        >
+        <Link href="/businesses" className="inline-block bg-stone-900 text-white text-sm font-medium px-5 py-2.5 rounded-full hover:bg-stone-700 transition-colors">
           Browse the directory
         </Link>
-        <Link
-          href="/about"
-          className="inline-block border border-stone-200 text-stone-700 text-sm font-medium px-5 py-2.5 rounded-full hover:border-stone-400 hover:bg-stone-50 transition-colors"
-        >
+        <Link href="/about" className="inline-block border border-stone-200 text-stone-700 text-sm font-medium px-5 py-2.5 rounded-full hover:border-stone-400 hover:bg-stone-50 transition-colors">
           Read about our standard
         </Link>
       </div>
     </div>
   )
 }
-
-/* ---------- Helpers ---------- */
 
 function inputClassName(error?: string): string {
   return [
