@@ -10,6 +10,7 @@ import { Business } from '@/lib/types'
 import { getCategoryIconPath } from '@/lib/categories'
 import { formatTagList } from '@/lib/tags'
 import { CRITERIA_NAMES } from '@/lib/criteria'
+import Nav from '@/components/Nav'
 
 
 const BusinessMap = dynamic(() => import('@/components/listings/BusinessMap'), {
@@ -258,12 +259,7 @@ export default function BusinessesPage() {
   return (
     <main className="h-screen flex flex-col bg-white overflow-hidden">
 
-      <nav className="border-b border-stone-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-stone-900">
-          candella
-        </Link>
-        <span className="text-sm text-stone-400">Melbourne</span>
-      </nav>
+      <Nav current="browse" />
 
       <div className="border-b border-stone-100 px-6 py-4 flex-shrink-0">
         <div className="flex flex-wrap gap-3 items-center">
@@ -288,46 +284,68 @@ export default function BusinessesPage() {
             ))}
           </select>
 
-          <select
-            value={suburbSelectValue}
-            onChange={e => selectSuburb(e.target.value)}
-            className="border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
-          >
-            <option value="All">All suburbs</option>
-            {suburbs.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 border border-stone-200 rounded-xl p-1 bg-white">
             <button
-              onClick={locationFilter.mode === 'nearMe' ? disableNearMe : enableNearMe}
-              disabled={locationLoading}
-              aria-pressed={locationFilter.mode === 'nearMe'}
-              className={`flex items-center gap-1.5 border rounded-xl px-4 py-2.5 text-sm transition-colors ${
-                locationFilter.mode === 'nearMe'
-                  ? 'border-emerald-400 text-emerald-700 bg-emerald-50'
-                  : 'border-stone-200 text-stone-600 hover:border-stone-400'
+              type="button"
+              onClick={() => {
+                if (locationFilter.mode === 'nearMe') {
+                  disableNearMe()
+                }
+              }}
+              aria-pressed={locationFilter.mode !== 'nearMe'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                locationFilter.mode !== 'nearMe'
+                  ? 'bg-stone-900 text-white'
+                  : 'text-stone-500 hover:text-stone-900'
               }`}
             >
-              <span style={{ fontSize: '14px' }}>◎</span>
-              {locationLoading
-                ? 'Locating...'
-                : locationFilter.mode === 'nearMe' ? 'Near me' : 'Near me'}
+              <span style={{ fontSize: '12px' }}>◉</span>
+              Suburb
             </button>
-
-            {locationFilter.mode === 'nearMe' && (
-              <select
-                value={locationFilter.radius}
-                onChange={e => updateRadius(Number(e.target.value))}
-                className="border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
-              >
-                {RADIUS_OPTIONS.map(r => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (locationFilter.mode !== 'nearMe') {
+                  enableNearMe()
+                }
+              }}
+              disabled={locationLoading}
+              aria-pressed={locationFilter.mode === 'nearMe'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-50 ${
+                locationFilter.mode === 'nearMe'
+                  ? 'bg-stone-900 text-white'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <span style={{ fontSize: '12px' }}>◎</span>
+              {locationLoading ? 'Locating\u2026' : 'Near me'}
+            </button>
           </div>
+
+          {locationFilter.mode === 'nearMe' ? (
+            <select
+              value={locationFilter.radius}
+              onChange={e => updateRadius(Number(e.target.value))}
+              className="border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
+              aria-label="Search radius"
+            >
+              {RADIUS_OPTIONS.map(r => (
+                <option key={r.value} value={r.value}>Within {r.label}</option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={suburbSelectValue}
+              onChange={e => selectSuburb(e.target.value)}
+              className="border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-600 focus:outline-none focus:border-emerald-400 transition-colors bg-white"
+              aria-label="Suburb"
+            >
+              <option value="All">All suburbs</option>
+              {suburbs.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
 
           <button
             onClick={() => setFiltersOpen(true)}

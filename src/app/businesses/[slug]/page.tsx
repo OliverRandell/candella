@@ -189,13 +189,13 @@ export default async function BusinessPage({ params, searchParams }: Props) {
                   <>
                     Sustainability credentials are being added. Read about{' '}
                     <Link href="/about" className="text-emerald-700 hover:underline font-medium">
-                      Candella\u2019s standard
+                      Candella's standard
                     </Link>
                     .
                   </>
                 ) : (
                   <>
-                    Sustainability credentials haven\u2019t been added yet.{' '}
+                    Sustainability credentials haven't been added yet.{' '}
                     <Link
                       href={`/claim?business=${business.slug}`}
                       className="text-emerald-700 hover:underline font-medium"
@@ -204,7 +204,7 @@ export default async function BusinessPage({ params, searchParams }: Props) {
                     </Link>{' '}
                     to add them, or read about{' '}
                     <Link href="/about" className="text-emerald-700 hover:underline font-medium">
-                      Candella\u2019s standard
+                      Candella's standard
                     </Link>
                     .
                   </>

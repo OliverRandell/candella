@@ -12,11 +12,11 @@ import {
 export const metadata: Metadata = {
   title: 'Claim your listing on Candella | For Businesses',
   description:
-    'Candella is Melbourne\u2019s curated guide to sustainable businesses. Claim your listing to edit your profile, add photos, get the verified badge, and join the network.',
+    'Candella is Melbourne&rsquo;s curated guide to sustainable businesses. Claim your listing to edit your profile, add photos, get the verified badge, and join the network.',
   openGraph: {
     title: 'Claim your listing on Candella',
     description:
-      'Melbourne\u2019s curated guide to sustainable businesses. Free to claim, takes a few minutes.',
+      'Melbourne&rsquo;s curated guide to sustainable businesses. Free to claim, takes a few minutes.',
     url: '/for-businesses',
     type: 'website',
   },
@@ -44,12 +44,12 @@ const benefits = [
   {
     icon: Leaf,
     title: 'Tell the full story',
-    body: 'Add the certifications, suppliers, and specific practices that the directory entry can\u2019t capture from the outside. The detail that only an owner knows.',
+    body: 'Add the certifications, suppliers, and specific practices that the directory entry can&rsquo;t capture from the outside. The detail that only an owner knows.',
   },
   {
     icon: Network,
     title: 'Cross-promotion across the directory',
-    body: 'Claimed listings appear in \u201Cmore in this suburb\u201D on other profiles, helping Melbourne\u2019s sustainability-minded customers discover you through businesses they already know.',
+    body: 'Claimed listings appear in \u201Cmore in this suburb\u201D on other profiles, helping Melbourne&rsquo;s sustainability-minded customers discover you through businesses they already know.',
   },
   {
     icon: Sparkles,
@@ -62,17 +62,17 @@ const steps = [
   {
     number: '1',
     title: 'Find your listing',
-    body: 'Search the directory or send us a link. If your business isn\u2019t listed yet, you can submit it for review.',
+    body: 'Search the directory or send us a link. If your business isn&rsquo;t listed yet, you can submit it for review.',
   },
   {
     number: '2',
     title: 'Claim it',
-    body: 'Fill out a short form to verify you\u2019re the owner. We\u2019ll confirm by email \u2014 usually within 48 hours.',
+    body: 'Fill out a short form to verify you&rsquo;re the owner. We&rsquo;ll confirm by email \u2014 usually within 48 hours.',
   },
   {
     number: '3',
     title: 'Make it yours',
-    body: 'Once verified, edit your profile, add photos, and tell the part of your story the directory entry couldn\u2019t.',
+    body: 'Once verified, edit your profile, add photos, and tell the part of your story the directory entry couldn&rsquo;t.',
   },
 ]
 
@@ -83,27 +83,27 @@ const faqs = [
   },
   {
     q: 'How do you verify I own the business?',
-    a: 'We\u2019ll send a verification email to an address associated with the business (usually the one on your website). If that\u2019s not possible, we\u2019ll arrange a quick alternative \u2014 a social media DM from the business account, or a brief call.',
+    a: 'We&rsquo;ll send a verification email to an address associated with the business (usually the one on your website). If that&rsquo;s not possible, we&rsquo;ll arrange a quick alternative \u2014 a social media DM from the business account, or a brief call.',
   },
   {
     q: 'What does \u201Cverified\u201D actually mean?',
-    a: 'It means the listing has been claimed by the business owner and is actively managed by them. It\u2019s a signal of authenticity, not an endorsement of sustainability claims \u2014 we treat those separately. Read our about page for how we curate.',
+    a: 'It means the listing has been claimed by the business owner and is actively managed by them. It&rsquo;s a signal of authenticity, not an endorsement of sustainability claims \u2014 we treat those separately. Read our about page for how we curate.',
   },
   {
-    q: 'What if my business isn\u2019t listed yet?',
-    a: 'Candella is curated \u2014 we list businesses that meet at least one of our published sustainability criteria. If you think yours fits, you can submit it for review. We\u2019ll be in touch either way.',
+    q: 'What if my business isn&rsquo;t listed yet?',
+    a: 'Candella is curated \u2014 we list businesses that meet at least one of our published sustainability criteria. If you think yours fits, you can submit it for review. We&rsquo;ll be in touch either way.',
   },
   {
-    q: 'Who\u2019s behind Candella?',
+    q: 'Who&rsquo;s behind Candella?',
     a: 'Candella is an independent project based in Melbourne, building a directory and community for sustainable businesses. Solo-founded, grown with care, not funded by advertisers.',
   },
   {
     q: 'Will you share my information?',
-    a: 'No. We don\u2019t sell data, we don\u2019t share your contact details with third parties, and any email you give us is used only for account-related communication unless you explicitly opt in to updates.',
+    a: 'No. We don&rsquo;t sell data, we don&rsquo;t share your contact details with third parties, and any email you give us is used only for account-related communication unless you explicitly opt in to updates.',
   },
   {
     q: 'Is anything else on the roadmap?',
-    a: 'We\u2019re exploring a few things \u2014 a community/rewards layer connecting Melbourne\u2019s sustainable businesses, deeper editorial coverage, possibly a native app. None of it is committed yet. Claimed members will hear about it first.',
+    a: 'We&rsquo;re exploring a few things \u2014 a community/rewards layer connecting Melbourne&rsquo;s sustainable businesses, deeper editorial coverage, possibly a native app. None of it is committed yet. Claimed members will hear about it first.',
   },
 ]
 
@@ -141,8 +141,8 @@ export default function ForBusinessesPage() {
             Own your listing on Candella.
           </h1>
           <p className="text-lg md:text-xl text-stone-600 max-w-2xl mb-8 leading-relaxed">
-            Candella is Melbourne\u2019s curated guide to sustainable
-            businesses. Claiming your listing takes a few minutes, it\u2019s
+            Candella is Melbourne's curated guide to sustainable
+            businesses. Claiming your listing takes a few minutes, its
             free, and it puts you in control of how your business shows up.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -212,7 +212,7 @@ export default function ForBusinessesPage() {
           <div className="mt-10 rounded-xl border border-stone-100 bg-stone-50/50 p-5">
             <p className="text-sm text-stone-600 leading-relaxed">
               <span className="font-medium text-stone-900">
-                Don\u2019t see your business yet?
+                Don't see your business yet?
               </span>{' '}
               You can{' '}
               <Link
@@ -221,7 +221,7 @@ export default function ForBusinessesPage() {
               >
                 submit it for review
               </Link>{' '}
-              and we\u2019ll get back to you.
+              and we'll get back to you.
             </p>
           </div>
         </section>
@@ -254,7 +254,7 @@ export default function ForBusinessesPage() {
             Ready to claim your listing?
           </h2>
           <p className="text-stone-300 mb-8 max-w-xl mx-auto leading-relaxed">
-            It takes a few minutes, it\u2019s free, and it puts your business
+            It takes a few minutes, it's free, and it puts your business
             on the map \u2014 literally.
           </p>
           <Link

@@ -232,24 +232,88 @@ export default function BusinessMap({
               lng: Number(selectedBusiness.lng),
             }}
             onCloseClick={() => setSelectedBusiness(null)}
+            pixelOffset={[0, -8]}
           >
-            <div style={{ maxWidth: '200px', fontFamily: 'sans-serif', padding: '4px' }}>
-              <p style={{ fontWeight: 500, fontSize: '14px', marginBottom: '2px', color: '#1c1c1a' }}>
-                {selectedBusiness.name}
+            <div
+              style={{
+                maxWidth: '240px',
+                fontFamily: 'inherit',
+                padding: '8px 4px 6px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                <p
+                  style={{
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    margin: 0,
+                    color: '#1c1917',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {selectedBusiness.name}
+                </p>
+                {selectedBusiness.is_verified && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      backgroundColor: '#ECFDF5',
+                      color: '#047857',
+                      padding: '1px 7px',
+                      borderRadius: '999px',
+                      fontWeight: 500,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Verified
+                  </span>
+                )}
+              </div>
+
+              <p
+                style={{
+                  fontSize: '11px',
+                  color: '#a8a29e',
+                  margin: '0 0 8px',
+                  textTransform: 'none',
+                  letterSpacing: '0',
+                  lineHeight: 1.4,
+                }}
+              >
+                {selectedBusiness.suburb} \u00b7 {selectedBusiness.category}
               </p>
-              <p style={{ fontSize: '12px', color: '#888780', marginBottom: '8px' }}>
-                {selectedBusiness.suburb} · {selectedBusiness.category}
-              </p>
+
               {selectedBusiness.description && (
-                <p style={{ fontSize: '12px', color: '#5F5E5A', marginBottom: '8px', lineHeight: '1.5' }}>
-                  {selectedBusiness.description.slice(0, 100)}...
+                <p
+                  style={{
+                    fontSize: '12px',
+                    color: '#57534e',
+                    margin: '0 0 10px',
+                    lineHeight: 1.55,
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {selectedBusiness.description}
                 </p>
               )}
+
               <a
                 href={`/businesses/${selectedBusiness.slug}`}
-                style={{ fontSize: '12px', color: '#0F6E56', textDecoration: 'none', fontWeight: 500 }}
+                style={{
+                  fontSize: '12px',
+                  color: '#047857',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
               >
-                View listing →
+                View listing
+                <span style={{ fontSize: '14px' }}>\u2192</span>
               </a>
             </div>
           </InfoWindow>
